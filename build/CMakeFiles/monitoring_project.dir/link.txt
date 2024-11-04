@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/monitoring_project.dir/src/main.c.o CMakeFiles/monitoring_project.dir/src/metrics.c.o CMakeFiles/monitoring_project.dir/src/expose_metrics.c.o -o monitoring_project  -Wl,-rpath,/usr/local/lib /usr/local/lib/libprom.so /usr/local/lib/libpromhttp.so

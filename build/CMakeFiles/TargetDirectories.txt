@@ -1,0 +1,3 @@
+/home/juan/Documentos/so-i-24-chp2-JuanSassi/monitor/build/CMakeFiles/monitoring_project.dir
+/home/juan/Documentos/so-i-24-chp2-JuanSassi/monitor/build/CMakeFiles/edit_cache.dir
+/home/juan/Documentos/so-i-24-chp2-JuanSassi/monitor/build/CMakeFiles/rebuild_cache.dir
