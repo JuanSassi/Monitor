@@ -10,11 +10,6 @@
 
 #include "expose_metrics.h"
 
-extern bool flag_bandwidth;
-extern bool flag_cpu;
-extern bool flag_disk;
-extern bool flag_change;
-
 /**
  * @brief Mutex para sincronización de hilos.
  */

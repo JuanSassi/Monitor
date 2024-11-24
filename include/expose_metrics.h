@@ -152,8 +152,3 @@ void init_metrics();
  * Esta función destruye los mutex que fueron inicializados para evitar fugas de memoria.
  */
 void destroy_mutex();
-
-extern bool flag_bandwidth;
-extern bool flag_cpu;
-extern bool flag_disk;
-extern bool flag_change;

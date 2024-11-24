@@ -6,7 +6,7 @@
  * Esta variable se utiliza para habilitar o deshabilitar el monitoreo
  * del uso del ancho de banda en la configuración.
  */
-bool flag_bandwidth = false;
+bool flag_bandwidth = true;
 
 /**
  * @brief Bandera para el monitoreo del uso de CPU.
@@ -14,7 +14,7 @@ bool flag_bandwidth = false;
  * Esta variable se utiliza para habilitar o deshabilitar el monitoreo
  * del uso de CPU en la configuración.
  */
-bool flag_cpu = false;
+bool flag_cpu = true;
 
 /**
  * @brief Bandera para el monitoreo del uso de disco.
@@ -22,7 +22,7 @@ bool flag_cpu = false;
  * Esta variable se utiliza para habilitar o deshabilitar el monitoreo
  * del uso del disco en la configuración.
  */
-bool flag_disk = false;
+bool flag_disk = true;
 
 /**
  * @brief Bandera para indicar cambios en la configuración.
@@ -30,127 +30,127 @@ bool flag_disk = false;
  * Esta variable se utiliza para señalar si ha habido cambios en
  * la configuración que deben ser procesados.
  */
-bool flag_change = false;
+bool flag_change = true;
 
-/**
- * @brief Carga la configuración desde un archivo JSON.
- *
- * Esta función intenta abrir un archivo JSON especificado por `filename`,
- * lee su contenido y lo parsea. Se devuelve un puntero a una estructura
- * `Config` que contiene los valores cargados, o NULL si ocurre un error.
- * @return Un puntero a una estructura Config que contiene los valores cargados, o NULL si hay un error.
- */
-Config* load_config(const char* filename)
-{
-    FILE* file = fopen(filename, "r");
-    if (!file)
-    {
-        perror("Error abriendo el archivo de configuración");
-        return NULL;
+int read_sampling_interval(const char *file_path) {
+    // Abrir el archivo JSON
+    FILE *file = fopen(file_path, "r");
+    if (!file) {
+        perror("Error al abrir el archivo");
+        return -1;
     }
 
+    // Leer el contenido del archivo
     fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    long file_size = ftell(file);
+    rewind(file);
 
-    char* data = malloc(length + 1);
-    fread(data, 1, length, file);
-    data[length] = '\0';
+    char *json_content = (char *)malloc(file_size + 1);
+    if (!json_content) {
+        perror("Error al asignar memoria");
+        fclose(file);
+        return -1;
+    }
+
+    fread(json_content, 1, file_size, file);
+    json_content[file_size] = '\0';
     fclose(file);
 
-    cJSON* json = cJSON_Parse(data);
-    free(data);
-    if (!json)
-    {
-        printf("Error parseando JSON: %s\n", cJSON_GetErrorPtr());
-        return NULL;
+    // Parsear el JSON
+    cJSON *json = cJSON_Parse(json_content);
+    free(json_content);
+    if (!json) {
+        fprintf(stderr, "Error al parsear el JSON: %s\n", cJSON_GetErrorPtr());
+        return -1;
     }
 
-    Config* config = malloc(sizeof(Config));
-
-    // Leer sampling_interval
-    cJSON* sampling_interval = cJSON_GetObjectItem(json, "sampling_interval");
-    if (cJSON_IsNumber(sampling_interval))
-    {
-        config->sampling_interval = sampling_interval->valueint; ///< Asignar el intervalo de muestreo.
-    }
-    else
-    {
-        config->sampling_interval = 1; // Valor predeterminado si falta en JSON
+    // Obtener el valor de "sampling_interval"
+    cJSON *sampling_interval = cJSON_GetObjectItemCaseSensitive(json, "sampling_interval");
+    if (!cJSON_IsNumber(sampling_interval)) {
+        fprintf(stderr, "El valor de 'sampling_interval' no es válido\n");
+        cJSON_Delete(json);
+        return -1;
     }
 
-    // Leer metrics
-    cJSON* metrics = cJSON_GetObjectItem(json, "metrics");
-    if (cJSON_IsArray(metrics))
-    {
-        config->metrics_count = cJSON_GetArraySize(metrics);
-        config->metrics = malloc(config->metrics_count * sizeof(char*));
-
-        for (int i = 0; i < config->metrics_count; i++)
-        {
-            cJSON* metric = cJSON_GetArrayItem(metrics, i);
-            if (cJSON_IsString(metric))
-            {
-                config->metrics[i] = strdup(metric->valuestring); ///< Copiar la métrica a la estructura.
-            }
-        }
-    }
-    else
-    {
-        config->metrics_count = 0; ///< No hay métricas si no se encuentra un array.
-        config->metrics = NULL;
-    }
-
-    // Inicializar banderas a false
-    flag_bandwidth = false;
-    flag_change = false;
-    flag_cpu = false;
-    flag_disk = false;
-
-    // Verificar qué métricas están habilitadas
-    for (int i = 0; i < config->metrics_count; i++)
-    {
-        if (strcmp(config->metrics[i], "bandwidth_usage") == 0)
-        {
-            flag_bandwidth = true; ///< Activar bandera de ancho de banda.
-        }
-        else if (strcmp(config->metrics[i], "cpu_usage_percentage") == 0)
-        {
-            flag_cpu = true; ///< Activar bandera de CPU.
-        }
-        else if (strcmp(config->metrics[i], "disk_usage_percentage") == 0)
-        {
-            flag_disk = true; ///< Activar bandera de disco.
-        }
-        else if (strcmp(config->metrics[i], "change_contexts") == 0) // Corregido el error de sintaxis
-        {
-            flag_change = true; ///< Activar bandera de cambios en contextos.
-        }
-        else
-        {
-            printf("Métrica desconocida: %s\n", config->metrics[i]); ///< Mensaje para métricas desconocidas.
-        }
-    }
-
-    cJSON_Delete(json); ///< Liberar memoria del objeto JSON.
-    return config;      ///< Devolver la configuración cargada.
+    int interval = sampling_interval->valueint;
+    cJSON_Delete(json);
+    return interval;
 }
 
 /**
- * @brief Libera la memoria ocupada por una estructura Config.
+ * @brief Actualiza las banderas de monitoreo según las métricas en el JSON.
  *
- * Esta función libera la memoria asignada a la estructura
- * `Config`, incluyendo sus métricas.
+ * @param file_path Ruta al archivo JSON que contiene la configuración.
  */
-void free_config(Config* config)
-{
-    if (config)
-    {
-        for (int i = 0; i < config->metrics_count; i++)
-        {
-            free(config->metrics[i]); ///< Liberar cada métrica.
-        }
-        free(config->metrics); ///< Liberar la lista de métricas.
-        free(config);          ///< Liberar la estructura de configuración.
+void update_flags_from_json(const char *file_path) {
+    // Abrir el archivo JSON
+    FILE *file = fopen(file_path, "r");
+    if (!file) {
+        perror("Error al abrir el archivo");
+        return;
     }
+
+    // Leer el contenido del archivo
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
+
+    char *json_content = (char *)malloc(file_size + 1);
+    if (!json_content) {
+        perror("Error al asignar memoria");
+        fclose(file);
+        return;
+    }
+
+    fread(json_content, 1, file_size, file);
+    json_content[file_size] = '\0';
+    fclose(file);
+
+    // Parsear el JSON
+    cJSON *json = cJSON_Parse(json_content);
+    free(json_content);
+    if (!json) {
+        fprintf(stderr, "Error al parsear el JSON: %s\n", cJSON_GetErrorPtr());
+        return;
+    }
+
+    // Obtener el array de "metrics"
+    cJSON *metrics = cJSON_GetObjectItemCaseSensitive(json, "metrics");
+    if (!cJSON_IsArray(metrics)) {
+        fprintf(stderr, "'metrics' no es un array válido\n");
+        cJSON_Delete(json);
+        return;
+    }
+
+    // Resetear banderas
+    flag_bandwidth = false;
+    flag_cpu = false;
+    flag_disk = false;
+    flag_change = false;
+
+    // Actualizar banderas según las métricas
+    cJSON *metric;
+    cJSON_ArrayForEach(metric, metrics) {
+        if (cJSON_IsString(metric)) {
+            if (strcmp(metric->valuestring, "bandwith_usage") == 0) {
+                flag_bandwidth = true;
+            } 
+            if (strcmp(metric->valuestring, "cpu_usage_porcentage") == 0) {
+                flag_cpu = true;
+            } 
+            if (strcmp(metric->valuestring, "disk_usage_porcentage") == 0) {
+                flag_disk = true;
+            } 
+            if (strcmp(metric->valuestring, "change_contexts") == 0){
+                flag_change = true;
+            }
+        }
+    }
+
+    // Indicar si hubo cambios en la configuración
+    if (flag_bandwidth || flag_cpu || flag_disk) {
+        flag_change = true;
+    }
+
+    cJSON_Delete(json);
 }

@@ -1,10 +1,12 @@
 #ifndef JSON_CFG_H
 #define JSON_CFG_H
 
+
 #include "cjson/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 // Variables globales que indican las banderas de métricas.
 
@@ -50,19 +52,8 @@ typedef struct
     int metrics_count;     ///< Número de métricas en la lista.
 } Config;
 
-/**
- * @brief Carga la configuración desde un archivo JSON.
- *
- * @param filename Ruta del archivo JSON que contiene la configuración.
- * @return Un puntero a una estructura Config que contiene los valores cargados, o NULL si hay un error.
- */
-Config* load_config(const char* filename);
-
-/**
- * @brief Libera la memoria ocupada por una estructura Config.
- *
- * @param config Puntero a la estructura Config a liberar.
- */
-void free_config(Config* config);
+// Declaración de las funciones
+int read_sampling_interval(const char *file_path);
+void update_flags_from_json(const char *file_path);
 
 #endif
